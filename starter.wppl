@@ -1,0 +1,36 @@
+var idealLearner = Infer({method: "enumerate"}, function(){
+  var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  observe(Bernoulli({p: p}), true);
+  observe(Bernoulli({p: p}), true);
+  return p
+})
+
+
+var model1a = Infer({method: "enumerate"}, function(){
+  var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  observe(Bernoulli({p: p}), true);
+  return p
+})
+
+// translate the following code, into something more like: pay $1, retain perfect p, otherwise: noisy version
+// resource rational part
+var remembered_model1a =  Infer({method: "enumerate"}, function(){
+  var noisify = function(p){
+    return flip(0.2) ? uniformDraw([0.1,0.3, 0.5, 0.7,0.9]) : p
+  }
+  var p = sample(model1a);
+  var remembered_p = noisify(p)
+  return remembered_p
+})
+
+// and then, translate the following into: if you get it "right", get $2
+var model1b = Infer({method: "enumerate"}, function(){
+  var p = sample(remembered_model1a);
+  observe(Bernoulli({p: p}), true);
+  return p
+})
+display(expectation(idealLearner))
+
+display(expectation(model1a))
+display(expectation(remembered_model1a))
+display(expectation(model1b))
