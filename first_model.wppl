@@ -1,0 +1,35 @@
+// The noise is a function of the cost function.
+// In this case, we model the noise as a reverse exponential function
+var get_noise = function (cost) {
+  var n_param = 1.0;
+  return 0.5 * Math.exp(- n_param * cost);
+};
+
+// This function generate a bit string of length "len"
+var generate_bstr = function (len) {
+  return repeat(len,flip);
+};
+
+// Apply noise to the bitstring. Return the bit string.
+var apply_noise = function (bstr, noise) {
+  return map(function (bit) { return flip(noise)^bit; } , bstr);
+};
+
+// This function evaluates the similarity between bit string.
+var eval_bitstring = function (bstr1, bstr2) {
+  var scores = map2(function (bit1,bit2) { return bit1 == bit2; } , bstr1, bstr2);
+  return sum(scores);
+};
+
+// The price you pay to lower the noise
+var cost = 6.0;
+var len = 20;
+
+
+var noise = get_noise(cost);
+var actual = generate_bstr(len);
+
+var remembered = apply_noise(actual, noise);
+var score = eval_bitstring(actual, remembered);
+
+score - cost
