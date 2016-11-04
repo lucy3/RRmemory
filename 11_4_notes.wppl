@@ -1,0 +1,73 @@
+var len = 5
+var cost = 2; // try 1, 3, etc 
+// is there a way to loop over things for different costs? gah no for loops
+
+var generate_bstr = function (len) {
+  return repeat(len,flip);
+};
+
+var sequence = generate_bstr(len);
+display(sequence)
+
+var observedDataSizes = _.range(len);
+var estimates = map(function(N) {
+  return expectation(idealLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+
+var idealLearner = Infer({method: "enumerate"}, function(){
+  var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  var coin = function() {return flip(p)};
+  condition(_.isEqual(sequence, repeat(len, coin))); 
+  condition(_.isEqual(sequence, repeat(len, coin))); 
+  return p
+})
+
+var model1a = Infer({method: "enumerate"}, function(){
+  var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  var coin = function() {return flip(p)};
+  // observe a sequence of bits equivalent to sequence
+  condition(_.isEqual(sequence, repeat(len, coin))); 
+  return p
+})
+
+// translate the following code, into something more like: pay $1, retain perfect p, otherwise: noisy version
+// resource rational part
+var remembered_model1a = Infer({method: "enumerate"}, function(){
+  var get_noise = function (cost) {
+    var n_param = 1.0;
+    return 2*Math.exp(- n_param * cost);
+  };
+  var noise = get_noise(cost)
+  print(noise)
+  var p = sample(model1a);
+  var noisify = function(){  // the more you pay, the less noise you get 
+    return flip(noise) ? uniformDraw([0.1,0.3, 0.5, 0.7,0.9]) : p
+  }
+  var remembered_p = noisify()
+  return remembered_p
+})
+
+// and then, translate the following into: if you get it "right", get $2
+var model1b = Infer({method: "enumerate"}, function(){
+  var p = sample(remembered_model1a);
+  var coin = function() {return flip(p)};
+  // observe a sequence of bits equivalent to sequence
+  condition(_.isEqual(sequence, repeat(len, coin))); 
+  return p 
+})
+
+var reward = expectation(model1b) - expectation(idealLearner)
+print(reward)
+
+viz.hist(model1b)
+viz.hist(idealLearner)
+
+// get the simple case: non-hierarchical, just inferring coin weight based on a sequence of observations
+// doing the paradigm of infer with one data point (condition/observe) and return posterior on coin weight
+// add noise, have posterior be prior for next round, take in another observation, repeat
+// try manually and then see if you can put it into a map or recursive call 
+// think about where hierarchical model would look in this domain. heavy weighted coins vs low weighted coins
+// binary scoring: make prediction about next coin weight. 
+// for generating the bit string we want to generate based on a bias coin 
+// (to have something you can learn about)
+// hierarchical saving posterior on weight versus high level variable: kind of coin
