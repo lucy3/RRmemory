@@ -1,0 +1,75 @@
+var len = 10
+var cost = 2
+var true_p = 0.9
+
+var generate_bstr = function (len) {
+  var coin = function() {return flip(true_p)};
+  return repeat(len, coin);
+};
+
+var sequence = generate_bstr(len);
+display(sequence)
+
+var observedDataSizes = _.range(len+1);
+
+// ideal version
+
+var idealLearner = function(d){
+  return Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    var coin = function() {return flip(p)};
+    condition(_.isEqual(d, repeat(d.length, coin))); 
+    return p
+  })
+}
+
+var estimatesIdeal = map(function(N) {
+  return expectation(idealLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+
+viz.line(observedDataSizes, estimatesIdeal);
+
+// noisy version
+
+var noisyLearnerHelper = function(d, yesterday, count){
+  if (count >= d.length) { return yesterday }
+  var new_count = count + 1
+  var today = Infer({method: "enumerate"}, function(){
+    var remembered_model = Infer({method: "enumerate"}, function(){
+      var get_noise = function (cost) {
+        var n_param = 1.0;
+        return 2*Math.exp(- n_param * cost);
+      };
+      var noise = get_noise(cost)
+      var p = sample(yesterday);
+      var noisify = function(){  // the more you pay, the less noise you get 
+        return flip(noise) ? uniformDraw([0.1,0.3, 0.5, 0.7,0.9]) : p
+      }
+      var remembered_p = noisify()
+      return remembered_p
+    })
+    var p = sample(remembered_model);
+    // observe a sequence of bits equivalent to sequence
+    observe(Bernoulli({p: p}), d[count]);
+    return p
+  })
+  return noisyLearnerHelper(d, today, new_count)
+}
+
+var noisyLearner = function(d){
+  var count = 0
+  var day1 = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    // observe a sequence of bits equivalent to sequence
+    if (d == 0) { return p }
+    observe(Bernoulli({p: p}), d[count]);
+    return p
+  })
+    return noisyLearnerHelper(d, day1, count)
+}
+
+var estimatesNoisy = map(function(N) {
+  return expectation(noisyLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+
+viz.line(observedDataSizes, estimatesNoisy);
