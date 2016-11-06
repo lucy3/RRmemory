@@ -1,16 +1,16 @@
-var len = 5
-var cost = 2; // try 1, 3, etc 
-// is there a way to loop over things for different costs? gah no for loops
+var len = 10
+var cost = 2
+var true_p = 0.9
 
 var generate_bstr = function (len) {
-  return repeat(len,flip);
+  var coin = function() {return flip(true_p)};
+  return repeat(len, coin);
 };
 
 var sequence = generate_bstr(len);
 display(sequence)
 
 var observedDataSizes = _.range(len+1);
-// between seeing each data point we see we have some sort of noise 
 
 var idealLearner = function(d){
   return Infer({method: "enumerate"}, function(){
@@ -20,12 +20,9 @@ var idealLearner = function(d){
     return p
   })
 }
-// for now add noise manually instead of map. e.g. one data point, one learner, second data point, second learner
-// add noise to belief
 
 var estimates = map(function(N) {
   return expectation(idealLearner(sequence.slice(0,N)))
 }, observedDataSizes);
 
 viz.line(observedDataSizes, estimates);
-// learning curve
