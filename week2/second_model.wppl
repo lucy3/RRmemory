@@ -1,5 +1,5 @@
 var len = 15
-var cost = 5
+var cost = 1
 var true_p = 0.9
 var reward = 0
 
@@ -11,17 +11,22 @@ var generate_bstr = function (len) {
 var sequence = generate_bstr(len);
 display(sequence)
 
-var observedDataSizes = _.range(len+1);
+var observedDataSizes = _.range(len); // save last one for final prediction
 
 // ideal version
 
 var idealLearner = function(d){
-  return Infer({method: "enumerate"}, function(){
+  var today = Infer({method: "enumerate"}, function(){
     var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
     var coin = function() {return flip(p)};
     condition(_.isEqual(d, repeat(d.length, coin))); 
     return p
   })
+  var p = sample(today);
+  var actual = sequence[d.length]
+  var prediction =  flip(p)
+  print(prediction == actual)
+  return today
 }
 
 var estimatesIdeal = map(function(N) {
@@ -37,7 +42,8 @@ var noisyLearnerHelper = function(d, yesterday, count){
     var actual = sequence[d.length]
     var p = sample(yesterday);
     var prediction =  flip(p)
-    reward = reward + prediction == actual // fix this 
+    print(prediction == actual)
+    // reward = prediction == actual? reward + 1 : reward
     return yesterday 
   }
   var new_count = count + 1
