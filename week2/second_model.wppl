@@ -1,26 +1,31 @@
-var len = 15
-var cost = 4
-var true_p = 0.9
-var reward = []
+var len = 15 // length of our total data
+var cost = 4 // how much do we pay to avoid noise? 
+// maybe should increase/increase cost over iterations
+var true_p = 0.9 // weight of coin that generates actual data
+var reward = [] // array to update with rewards
 
 var generate_bstr = function (len) {
+  // generate original observations 
   var coin = function() {return flip(true_p)};
   return repeat(len, coin);
 };
 
 var sequence = generate_bstr(len);
 display(sequence)
+// notice how the less stereotypical a sequence is, the harder it is to learn
 
 var observedDataSizes = _.range(len); // save last one for final prediction
 
-// ideal version
+// IDEAL VERSION
 
 var ideal_reward = []
+// array to update with rewards
 
 var idealLearner = function(d){
   var today = Infer({method: "enumerate"}, function(){
     var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
     var coin = function() {return flip(p)};
+    // no noise yay!
     condition(_.isEqual(d, repeat(d.length, coin))); 
     return p
   })
@@ -28,7 +33,8 @@ var idealLearner = function(d){
   var actual = sequence[d.length]
   var prediction =  flip(p)
   if (prediction == actual) {
-      ideal_reward.push(1)
+      ideal_reward.push(1) // for now we give you +1 if you get it right
+    // for more important things maybe we'll give you more
     }
   return today
 }
@@ -42,7 +48,7 @@ print(sum(ideal_reward))
 
 viz.line(observedDataSizes, estimatesIdeal);
 
-// noisy version
+// NOISY VERSION
 
 var noisyLearnerHelper = function(d, yesterday, count){
   if (count >= d.length) { 
@@ -50,7 +56,7 @@ var noisyLearnerHelper = function(d, yesterday, count){
     var p = sample(yesterday);
     var prediction =  flip(p)
     if (prediction == actual) {
-      reward.push(1)
+      reward.push(1) // you predicted the next flip correctly 
     }
     return yesterday 
   }
@@ -58,7 +64,8 @@ var noisyLearnerHelper = function(d, yesterday, count){
   var today = Infer({method: "enumerate"}, function(){
     var remembered_model = Infer({method: "enumerate"}, function(){
       var get_noise = function (cost) {
-        var n_param = 0.5; // this determines how 
+        var n_param = 0.5; // this determines how steep the curve is, 
+        // aka how effective is paying more
         return Math.exp(- n_param * cost);
       };
       var noise = get_noise(cost)
@@ -70,7 +77,6 @@ var noisyLearnerHelper = function(d, yesterday, count){
       return remembered_p
     })
     var p = sample(remembered_model);
-    // observe a sequence of bits equivalent to sequence
     observe(Bernoulli({p: p}), d[count]);
     return p
   })
@@ -81,7 +87,6 @@ var noisyLearner = function(d){
   var count = 0
   var day1 = Infer({method: "enumerate"}, function(){
     var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
-    // observe a sequence of bits equivalent to sequence
     if (d == 0) { return p }
     observe(Bernoulli({p: p}), d[count]);
     return p
