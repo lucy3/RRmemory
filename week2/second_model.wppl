@@ -1,6 +1,7 @@
-var len = 10
-var cost = 2
+var len = 15
+var cost = 5
 var true_p = 0.9
+var reward = 0
 
 var generate_bstr = function (len) {
   var coin = function() {return flip(true_p)};
@@ -32,18 +33,24 @@ viz.line(observedDataSizes, estimatesIdeal);
 // noisy version
 
 var noisyLearnerHelper = function(d, yesterday, count){
-  if (count >= d.length) { return yesterday }
+  if (count >= d.length) { 
+    var actual = sequence[d.length]
+    var p = sample(yesterday);
+    var prediction =  flip(p)
+    reward = reward + prediction == actual // fix this 
+    return yesterday 
+  }
   var new_count = count + 1
   var today = Infer({method: "enumerate"}, function(){
     var remembered_model = Infer({method: "enumerate"}, function(){
       var get_noise = function (cost) {
-        var n_param = 1.0;
-        return 2*Math.exp(- n_param * cost);
+        var n_param = 0.5; // this determines how 
+        return Math.exp(- n_param * cost);
       };
       var noise = get_noise(cost)
       var p = sample(yesterday);
       var noisify = function(){  // the more you pay, the less noise you get 
-        return flip(noise) ? uniformDraw([0.1,0.3, 0.5, 0.7,0.9]) : p
+        return flip(noise) ? p*0.9 : p
       }
       var remembered_p = noisify()
       return remembered_p
@@ -65,7 +72,7 @@ var noisyLearner = function(d){
     observe(Bernoulli({p: p}), d[count]);
     return p
   })
-    return noisyLearnerHelper(d, day1, count)
+  return noisyLearnerHelper(d, day1, count)
 }
 
 var estimatesNoisy = map(function(N) {
@@ -73,3 +80,4 @@ var estimatesNoisy = map(function(N) {
 }, observedDataSizes);
 
 viz.line(observedDataSizes, estimatesNoisy);
+print(reward)
