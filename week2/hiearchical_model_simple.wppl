@@ -1,0 +1,44 @@
+var observedData = [
+{coin: 'coin1', draw: true},// generate bit string
+{coin: 'coin1', draw: true},
+{coin: 'coin1', draw: false},
+{coin: 'coin1', draw: true},
+{coin: 'coin1', draw: true},
+{coin: 'coin1', draw: true},
+{coin: 'coin2', draw: true},
+{coin: 'coin2', draw: false},
+{coin: 'coin2', draw: true},
+{coin: 'coin2', draw: true},
+{coin: 'coin2', draw: true},
+{coin: 'coin2', draw: false},
+{coin: 'coin3', draw: true},
+{coin: 'coin3', draw: true},
+{coin: 'coin3', draw: true},
+{coin: 'coin3', draw: true},
+{coin: 'coin3', draw: true},
+{coin: 'coin3', draw: false}
+]
+///
+
+var predictives = Infer({method: 'MCMC', samples: 20000}, function(){
+  // we make a global prototype which is a dirichlet sample scaled to total 5.
+  var prototype = flip(0.5) ? true : false // high weight coin? 
+  
+  var makeCoin = mem(function(coin) { 
+    var weight = prototype ? uniformDraw([0.9,0.7]) : uniformDraw([0.1,0.3])
+    return Bernoulli({p: weight})
+  });
+
+  var obsFn = function(datum){
+    observe(makeCoin(datum.coin), datum.draw)
+  }
+
+  mapData({data: observedData}, obsFn)
+
+  return {coin1: sample(makeCoin('coin1')),
+          coin2: sample(makeCoin('coin2')),
+          coin3: sample(makeCoin('coin3')),
+          coinN: sample(makeCoin('coinN'))}
+});
+
+viz.marginals(predictives)
