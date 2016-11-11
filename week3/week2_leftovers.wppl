@@ -1,0 +1,118 @@
+var len = 15 // length of our total data
+var cost = 1 // how much do we pay to avoid noise? 
+// maybe should increase/increase cost over iterations
+var true_p = 0.9 // weight of coin that generates actual data
+var reward = [] // array to update with rewards
+
+var generate_bstr = function (len) {
+  // generate original observations 
+  var coin = function() {return flip(true_p)};
+  return repeat(len, coin);
+}; // maybe fix the string 
+
+var sequence = generate_bstr(len);
+display(sequence)
+// notice how the less stereotypical a sequence is, the harder it is to learn
+
+var observedDataSizes = _.range(len); // save last one for final prediction
+
+// IDEAL VERSION
+
+var ideal_reward = []
+// array to update with rewards
+
+var idealLearner = function(d){
+  var today = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    var coin = function() {return flip(p)};
+    // no noise yay!
+    condition(_.isEqual(d, repeat(d.length, coin))); 
+    return p
+  })
+  var p = sample(today);
+  var actual = sequence[d.length]
+  var prediction =  flip(p)
+  if (prediction == actual) {
+      ideal_reward.push(1) // for now we give you +1 if you get it right
+    // for more important things maybe we'll give you more
+    }
+  return today
+}
+
+var estimatesIdeal = map(function(N) {
+  return expectation(idealLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+
+print("Earnings in ideal world")
+print(sum(ideal_reward))
+
+viz.line(observedDataSizes, estimatesIdeal);
+
+// NOISY VERSION
+
+var noisyLearnerHelper = function(d, yesterday, count){
+  if (count >= d.length) { 
+    var actual = sequence[d.length]
+    var p = sample(yesterday);
+    var prediction =  flip(p)
+    if (prediction == actual) {
+      reward.push(1) // you predicted the next flip correctly 
+    }
+    return yesterday 
+  }
+  var new_count = count + 1
+  var today = Infer({method: "enumerate"}, function(){
+    var remembered_model = Infer({method: "enumerate"}, function(){
+      var get_noise = function (cost) {
+        var n_param = 0.5; // this determines how steep the curve is, 
+        // aka how effective is paying more
+        return Math.exp(- n_param * cost);
+      };
+      var noise = get_noise(cost)
+      var p = sample(yesterday);
+      var noisify = function(){  // the more you pay, the less noise you get 
+        return flip(noise) ? p*0.9 : p
+      }
+      var remembered_p = noisify()
+      return remembered_p
+    })
+    var p = sample(remembered_model);
+    observe(Bernoulli({p: p}), d[count]);
+    return p
+  })
+  return noisyLearnerHelper(d, today, new_count)
+}
+
+var noisyLearner = function(d){
+  var count = 0
+  var day1 = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    if (d == 0) { return p }
+    observe(Bernoulli({p: p}), d[count]);
+    return p
+  })
+  return noisyLearnerHelper(d, day1, count)
+}
+
+var estimatesNoisy = map(function(N) {
+  return expectation(noisyLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+
+viz.line(observedDataSizes, estimatesNoisy);
+print("Spent: ")
+print(cost*(len-1))
+print("Earned: ")
+print(sum(reward))
+// standardize units so you can look at overall utility 
+// sometimes it should be positive and sometimes it should be negative
+// write down all of the parameters of this model and all of the knobs you can turn
+// next time, provide picture for noisy function 
+// include hierarchical, insert noise in higher level versus lower
+// right now cost is to pay to not to forget, 
+// but should look at it as cost of remembering
+// learning curves at different levels of noise (no cost)
+// there won't be primacy in the way we've written in it but there might be recency
+// (maybe don't think about primacy or recency yet because that's on level of observation not belief)
+// (could be interesting discussion point in final paper)
+// think about noise, plot some curves, alternative formulations, 
+// and what your assumptions are about each component
