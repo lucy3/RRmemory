@@ -1,0 +1,3 @@
+var makeDatum = function(){ return { coin: "coin1", datum: flip(0.9) } }
+
+repeat(10, makeDatum)
