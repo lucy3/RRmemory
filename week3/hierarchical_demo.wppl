@@ -1,0 +1,39 @@
+var d = [true, true, true, true, false, true]
+
+var idealLearner = Infer({method: "enumerate"}, function(){
+  var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  var obsFn = function(di){ observe(Bernoulli({p:p}), di) }
+  mapData({data: d}, obsFn)
+//   observe(Binomial({n: d.length, p: p}), sum(d))
+  //   var coin = function() {return flip(p)};
+  // no noise yay!
+//   condition(_.isEqual(d, repeat(d.length, coin))); 
+  return p
+})
+
+//unnormalize probabilities for heavy / light coins
+var coinDictionary = {
+  heavy: [0.1,0.2,0.3,0.4,0.5],
+  light: [0.5,0.4,0.3,0.2,0.1]
+}
+
+
+var hierarchicalLearner = Infer({method: "enumerate"}, function(){
+  var kindOfCoin = uniformDraw(["heavy", "light"])
+  var p = categorical({vs: [0.1, 0.3, 0.5, 0.7,0.9], ps: coinDictionary[kindOfCoin]})
+//   var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+  var obsFn = function(di){ observe(Bernoulli({p:p}), di) }
+  mapData({data: d}, obsFn)
+  return { p : p, coinKind: kindOfCoin }
+})
+
+var marginalize = function(dist, key){
+  return Infer({method: "enumerate"}, function(){
+    return {key: sample(dist)[key]}
+  })
+}
+
+viz.table(marginalize(hierarchicalLearner, "p"))
+viz.table(marginalize(hierarchicalLearner, "coinKind"))
+// viz.marginals(hierarchicalLearner)
+
