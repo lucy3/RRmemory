@@ -1,0 +1,106 @@
+
+var main_p = function (len, cost, true_p) {
+console.log("Cost =", cost);
+var reward = [] // array to update with rewards
+
+
+var generate_bstr = function (len) {
+  // generate original observations
+  var coin = function() {return flip(true_p)};
+  return repeat(len, coin);
+}; // maybe fix the string
+
+var sequence = generate_bstr(len);
+// notice how the less stereotypical a sequence is, the harder it is to learn
+
+var observedDataSizes = _.range(len); // save last one for final prediction
+
+// IDEAL VERSION
+
+var ideal_reward = []
+// array to update with rewards
+
+var idealLearner = function (d) {
+  var today = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    var coin = function() {return flip(p)};
+    // no noise yay!
+    condition(_.isEqual(d, repeat(d.length, coin)));
+    return p
+  })
+  var p = sample(today);
+  var actual = sequence[d.length]
+  var prediction =  flip(p)
+  if (prediction == actual) {
+      ideal_reward.push(1) // for now we give you +1 if you get it right
+    // for more important things maybe we'll give you more
+    }
+  return today
+}
+
+var estimatesIdeal = map(function(N) {
+  return expectation(idealLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+viz.line(observedDataSizes, estimatesIdeal);
+console.log("Earnings in ideal world:", sum(ideal_reward))
+
+// viz.line(observedDataSizes, estimatesIdeal);
+
+// NOISY VERSION
+
+// Return: An inferenced belief of the weight parameter p of the coin
+var noisyLearnerHelper = function(d, yesterday, count){
+  if (count >= d.length) {
+    var actual = sequence[d.length]
+    var p = sample(yesterday);
+    var prediction = flip(p)
+    if (prediction == actual) {
+        reward.push(1) // for now we give you +1 if you get it right
+      // for more important things maybe we'll give you more
+    }
+    //reward.push(prediction == actual) // you predicted the next flip correctly
+    return yesterday
+  }
+  // Value: is a distribution that represents today's posterior
+  // Today's posterior is calculated upon today's observation and noise.
+  var today = Infer({method: "enumerate"}, function () {
+    var remembered_model = Infer({method: "enumerate"}, function() {
+      // var noise = 1/(cost+1);
+      var p = sample(yesterday);
+      var remembered_p = flip() ? (p*cost+1)/(cost+1) : (p*cost)/(cost+1);
+      // var remembered_p = flip() ? (p+noise)/(1+noise) : p/(1+noise);
+      return remembered_p;
+    })
+    var p = sample(remembered_model);
+    observe(Bernoulli({p: p}), d[count]);
+    return p;
+  });
+  return noisyLearnerHelper(d, today, count + 1);
+}
+
+var noisyLearner = function(d){
+  var count = 0
+  var day1 = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    if (d == 0) { return p }
+    observe(Bernoulli({p: p}), d[count]);
+    return p
+  })
+  return noisyLearnerHelper(d, day1, count)
+}
+
+var estimatesNoisy = map(function(N) {
+  return expectation(noisyLearner(sequence.slice(0,N)))
+}, observedDataSizes);
+viz.line(observedDataSizes, estimatesNoisy);
+console.log("Earnings in actual world:", sum(reward));
+//return [observedDataSizes, estimatesNoisy, cost*(len-1), sum(reward)];
+return sum(reward);
+}
+var payments = repeat(20, function () { return uniformDraw(_.range(100))/10;} );
+var true_p = 0.9;
+var len = 15;
+var earnings = map(function (x) {return main_p(len,x,true_p)}, payments);
+console.log(payments);
+console.log(earnings);
+// viz.scatter(payments, earnings);
