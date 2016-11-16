@@ -2,7 +2,7 @@ var payments = mapN(function(x) { return (x + 1)/7; }, 20);
 
 var true_p = 0.9;
 var len = 3;
-var test_len = 30;
+var test_len = 300;
 
 var main_p = function (len, cost, true_p, sequence, test_count) {
   console.log("Cost =", cost);
@@ -35,8 +35,8 @@ var main_p = function (len, cost, true_p, sequence, test_count) {
         };
         var noise = get_noise(cost)
         if (flip(noise)) {
-          observe(Bernoulli({p: p}), !d[count])
-          //var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+          //observe(Bernoulli({p: p}), !d[count])
+          return uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
           }
         return p;
       })
