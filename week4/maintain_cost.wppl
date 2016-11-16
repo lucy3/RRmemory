@@ -5,7 +5,7 @@ var d = [true, true, false, true, true, true, true, false, false, true];
 
 var generate_bstr = function (len, p) {
   return repeat(len, function() { return flip(p) } );
-}; // maybe fix the string
+};
 
 /** IdealLearner: Inferring the parameter p -- the weight parameter of the coin
  *  Ideal learner in this case is Beta learner that keeps both mean and variance
@@ -41,9 +41,10 @@ var gaussian_Learner = Infer({method:"enumerate"}, function () {
  *  Prior is N(0.5,0.5)
  *  Let us assume that the "cost" of learning this distribution is 1
  */
-var mean_gaussian_Learner = Infer({method:"enumerate"}, function () {
-  throw "Not implemented error"
-});
+
+//var mean_gaussian_Learner = Infer({method:"enumerate"}, function () {
+//  throw "Not implemented error"
+//});
 
 /** Step wise mean beta learner
  *  Input: old parameter alpha, beta in beta distribution and an observation
@@ -60,5 +61,5 @@ var _step_mean_learner_beta = function (params, obs) {
   var new_b = params.b + (1-obs);
   var new_a_p = new_a / (tot+1);
   var new_b_p = new_b / (tot+1);
-  return {a: new_a_p * (new_a_p*new_b_p / variance - 1), b: new_b_p * (new_a_p*new_b_p / variance - 1)} };
+  return {a: new_a_p * (new_a_p*new_b_p / variance - 1), b: new_b_p * (new_a_p*new_b_p / variance - 1)}
 };
