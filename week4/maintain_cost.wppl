@@ -1,0 +1,64 @@
+ /* Construct the data set
+  * For general data set constructor, use generate_bstr
+  */
+var d = [true, true, false, true, true, true, true, false, false, true];
+
+var generate_bstr = function (len, p) {
+  return repeat(len, function() { return flip(p) } );
+}; // maybe fix the string
+
+/** IdealLearner: Inferring the parameter p -- the weight parameter of the coin
+ *  Ideal learner in this case is Beta learner that keeps both mean and variance
+ *  Stores the entire "posterior distribution" of p after observing the flipping outcome in array d
+ *  Prior is Beta(1,1)
+ *  Expected posterior should be Beta(1+n_true, 1+n_false)
+ *  Let us assume that the "cost" of learning this distribution is 3
+ */
+var ideal_Learner = Infer({method:"enumerate"}, function () {
+  var p = Beta({a:1, b:1}); // equivalent to uniform distribution
+  var obsFn = function (di) { observe(Bernoulli({p: p}), di) };
+  mapData({data: d}, obsFn);
+  return p
+});
+
+/** Gaussian Learner: Inferring the parameter p -- the weight parameter of the coin
+ *  Stores the mean and variance of p after observing the flipping outcome in array d
+ *  The mean and sqrt(variance) is stored through mu and sigma in Gaussian parameters
+ *  Prior is N(0.5,0.5)
+ *  Let us assume that the "cost" of learning this distribution is 2
+ */
+var gaussian_Learner = Infer({method:"enumerate"}, function () {
+  var p = Gaussian({mu:0.5, sigma:0.5}); // equivalent to uniform distribution
+  var obsFn = function (di) { observe(Bernoulli({p: p}), di) };
+  mapData({data: d}, obsFn);
+  return p
+});
+
+/** Mean Gaussian Learner: Inferring the parameter p -- the weight parameter of the coin
+ *  Stores the mean of p after observing the flipping outcome in array d
+ *  !! For each observation, we should **reset** the variance to the old value (or set to original distribution)
+ *  The mean is stored through mu Gaussian parameters
+ *  Prior is N(0.5,0.5)
+ *  Let us assume that the "cost" of learning this distribution is 1
+ */
+var mean_gaussian_Learner = Infer({method:"enumerate"}, function () {
+  throw "Not implemented error"
+});
+
+/** Step wise mean beta learner
+ *  Input: old parameter alpha, beta in beta distribution and an observation
+ *  Returns: new parameter alpha', beta' in beta distribution
+ *  To actually construct a new distribution object, may use Beta(_step_mean_learner_beta(params, obs))
+ *  To update, please use new_params = _step_mean_learner_beta(params, obs)
+ */
+var _step_mean_learner_beta = function (params, obs) {
+  var tot = params.a + params.b;
+  var a_p = params.a / tot;
+  var b_p = params.b / tot;
+  var variance = a_p * b_p / (tot + 1);
+  var new_a = params.a + obs;
+  var new_b = params.b + (1-obs);
+  var new_a_p = new_a / (tot+1);
+  var new_b_p = new_b / (tot+1);
+  return {a: new_a_p * (new_a_p*new_b_p / variance - 1), b: new_b_p * (new_a_p*new_b_p / variance - 1)} };
+};
