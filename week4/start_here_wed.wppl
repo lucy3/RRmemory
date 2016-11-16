@@ -1,0 +1,96 @@
+var payments = mapN(function(x) { return (x + 1)/2; }, 20);
+
+var true_p = 0.9;
+var len = 15;
+var test_len = 30;
+
+var main_p = function (len, cost, true_p, sequence, test_count) {
+  console.log("Cost =", cost);
+  var reward = [] // array to update with rewards
+
+  // NOISY VERSION
+
+  // Return: An inferenced belief of the weight parameter p of the coin
+  var noisyLearnerHelper = function(d, yesterday, count){
+    if (count >= d.length) {
+      var actual = sequence[d.length]
+      var sample_flip = function() {
+        var p = sample(yesterday);
+        return flip(p)
+      }
+      var prediction = repeat(test_len, sample_flip)
+      reward.push(10*(1 - Math.abs(sum(prediction) - test_count)/test_len))
+      return yesterday
+    }
+    // Value: is a distribution that represents today's posterior
+    // Today's posterior is calculated upon today's observation and noise.
+    var today = Infer({method: "enumerate"}, function () {
+      var remembered_model = Infer({method: "enumerate"}, function() {
+        // var noise = 1/(cost+1);
+        var p = sample(yesterday);
+        var remembered_p = flip() ? (p*cost+1)/(cost+1) : (p*cost)/(cost+1);
+        return remembered_p;
+      })
+      var p = sample(remembered_model);
+      observe(Bernoulli({p: p}), d[count]);
+      return p;
+    });
+    return noisyLearnerHelper(d, today, count + 1);
+  }
+
+  var noisyLearner = function(d){
+    var count = 0
+    var day1 = Infer({method: "enumerate"}, function(){
+      var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+      if (d == 0) { return p }
+      observe(Bernoulli({p: p}), d[count]);
+      return p
+    })
+    return noisyLearnerHelper(d, day1, count)
+  }
+
+  viz(noisyLearner(sequence))
+  console.log("Earnings in actual world:", sum(reward));
+  return sum(reward);
+}
+
+var generate_bstr = function (len) {
+  // generate original observations
+  var coin = function() {return flip(true_p)};
+  return repeat(len, coin);
+}; // maybe fix the string
+
+var sequence = generate_bstr(len);
+// notice how the less stereotypical a sequence is, the harder it is to learn
+// aka training set
+
+var test_count = sum(generate_bstr(test_len));
+// number of trues in the test set
+
+// IDEAL VERSION
+
+var ideal_reward = []
+// array to update with rewards
+
+var idealLearner = function (d) {
+  var today = Infer({method: "enumerate"}, function(){
+    var p = uniformDraw([0.1,0.3, 0.5, 0.7,0.9])
+    var coin = function() {return flip(p)};
+    // no noise yay!
+    condition(_.isEqual(d, repeat(d.length, coin)));
+    return p
+  })
+  var p = sample(today);
+  var prediction = repeat(test_len, function() {return flip(p)})
+  ideal_reward.push(10*(1 - Math.abs(sum(prediction) - test_count)/test_len))
+  return today
+}
+
+viz.hist(idealLearner(sequence))
+console.log("Earnings in ideal world:", sum(ideal_reward))
+
+var earnings = map(function (x) {
+  return main_p(len,x,true_p,sequence, test_count)
+}, payments);
+viz.scatter(payments, earnings);
+// KEEP IN MIND: the less randomness there is in our experiment, the better
