@@ -1,4 +1,4 @@
-var payments = mapN(function(x) { return (x + 1)/2; }, 20);
+var payments = mapN(function(x) { return (x + 1); }, 10);
 
 var true_p = 0.9;
 var len = 15;
@@ -27,8 +27,9 @@ var main_p = function (len, cost, true_p, sequence, test_count) {
     var today = Infer({method: "enumerate"}, function () {
       var remembered_model = Infer({method: "enumerate"}, function() {
         // var noise = 1/(cost+1);
-        var p = sample(yesterday);
-        var remembered_p = flip() ? (p*cost+1)/(cost+1) : (p*cost)/(cost+1);
+        var p = sample(yesterday)
+        var drift = flip() ? (p*cost+1)/(cost+1) : (p*cost)/(cost+1);
+        var remembered_p = flip(1/(cost + 1)) ? drift : p
         return remembered_p;
       })
       var p = sample(remembered_model);
