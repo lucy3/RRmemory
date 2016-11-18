@@ -13,7 +13,7 @@ var _step_learn = function (prior, obs, cost, default_p, forward_noise) {
 
 var constant_cost_learn = function (prior, dat, cost, forward_noise) {
   var constant_cost_learn_helper = function (prior, dat, cost, forward_noise, default_p) {
-    var opts = {method:"rejection", samples:2000};
+    var opts = {method:"rejection", samples:5000};
     if (dat.length == 0) return prior;
     var post = Infer(opts, _step_learn(prior, dat[0], cost, default_p, forward_noise));
     return constant_cost_learn_helper(post, dat.slice(1), cost, forward_noise, default_p);
