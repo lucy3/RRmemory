@@ -5,7 +5,7 @@ var generate_bstr = function (len, p) {
 var _step_learn = function (prior, obs, cost, default_p, forward_noise) {
  return function () {
    var sam = sample(prior);
-   var p = sam > 0.99 ? 0.99 : sam < 0.01 ? 0.01 : sam;
+   var p = sam;// > 0.999 ? 0.999 : sam < 0.001 ? 0.001 : sam;
    observe(Bernoulli({p: p}), obs);
    return forward_noise(cost, p, default_p);
  };
@@ -21,14 +21,39 @@ var constant_cost_learn = function (prior, dat, cost, forward_noise) {
   return constant_cost_learn_helper(prior, dat, cost, forward_noise, prior);
 } 
 
-// Forward noise function(s)
+// Forward noise function[s]
 var _reset = function (cost, p, default_p) {
   return flip(1/(cost+1)) ? sample(default_p) : p;
 }
 
+// evaluation
+var eval_binomial = function(p, post, samples) {
+  var num_actual = sample(Binomial({p:p, n:samples}));
+  var pr = post;// > 0.999 ? 0.999 : post < 0.001 ? 0.001 : post;
+  var num_pred = sample(Binomial({p:pr, n:samples}));
+  return (Math.abs(num_pred - num_actual) / (samples));
+}
 
-var pp = Gaussian({mu:0.5, sigma:0.5}); // Uniform({a:0,b:1});
-var d = generate_bstr(16, 0.8);
-var posf = constant_cost_learn(pp, d, 5, _reset);
+var actual_p = 0.85;
+var pp = LogitNormal({mu:0, sigma:1.5, a:0, b:1});
 
-viz.hist(posf)
+// viz.hist(posf)
+
+var test_cost = function (cost) {
+  var d = generate_bstr(15, actual_p);
+  var posf = constant_cost_learn(pp, d, cost, _reset);
+  var result = eval_binomial(actual_p, posf, 5000);
+  console.log(result);
+  return result
+}
+
+var experiment = function (costs) {
+  return map(test_cost, costs)
+}
+
+var costs = [5.0, 4.0, 3.0, 2.5, 2.0, 1.75, 1.5, 1.25, 1.0, 0.8, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01];
+var prelim = experiment(costs);
+
+console.log(prelim);
+
+viz.scatter(costs, prelim)
