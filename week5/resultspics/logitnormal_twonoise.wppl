@@ -1,0 +1,77 @@
+var generate_bstr = function (len, p) {
+ return repeat(len, function() { return flip(p) } );
+};
+
+var _step_learn = function (prior, obs, cost, default_p, forward_noise) {
+ return function () {
+   var sam = sample(prior);
+   var p = sam;// > 0.999 ? 0.999 : sam < 0.001 ? 0.001 : sam;
+   observe(Bernoulli({p: p}), obs);
+   return forward_noise(cost, p, default_p, obs);
+ };
+};
+
+var constant_cost_learn = function (prior, dat, cost, forward_noise) {
+  var constant_cost_learn_helper = function (prior, dat, cost, forward_noise, default_p) {
+    var opts = {method:"rejection", samples:1000};
+    if (dat.length == 0) return prior;
+    var post = Infer(opts, _step_learn(prior, dat[0], cost, default_p, forward_noise));
+    return constant_cost_learn_helper(post, dat.slice(1), cost, forward_noise, default_p);
+  }
+  return constant_cost_learn_helper(prior, dat, cost, forward_noise, prior);
+} 
+
+// Forward noise function[s]
+var _reset = function (cost, p, default_p) {
+  return flip(1/(cost+1)) ? sample(default_p) : p;
+}
+
+// Using this one
+var _false_mem = function (cost, p, default_p, obs) {
+  if (flip(1/(cost+1))) {
+    observe(Bernoulli({p: p}), !obs);
+  }
+  return p
+}
+
+// evaluation
+var eval_binomial = function(p, post, samples) {
+  var num_actual = sample(Binomial({p:p, n:samples}));
+  var pr = expectation(post);// > 0.999 ? 0.999 : post < 0.001 ? 0.001 : post;
+  var num_pred = sample(Binomial({p:pr, n:samples}));
+  // console.log(num_actual, num_pred);
+  var e = ((num_pred - num_actual) / (samples));
+  return e*e;
+}
+
+var actual_p = 0.8;
+var pp = LogitNormal({mu:0, sigma:1.5, a:0, b:1});
+
+// viz.hist(posf)
+
+var test_cost = function (cost) {
+  var d = generate_bstr(20, actual_p);
+  var posf = constant_cost_learn(pp, d, cost, _false_mem);
+  // viz.hist(posf)
+  //print(cost)
+  //print(eval_binomial(actual_p, posf, 5000))
+  //print("OK!")
+  var result = cost + 100*eval_binomial(actual_p, posf, 5000);
+  console.log(".")
+  return result
+}
+
+var experiment = function (costs) {
+  return map(function (c) {
+    return sum(repeat(20, function () {
+      test_cost(c)
+    })) / 20
+  }, costs)
+}
+
+var costs = [0.01,0.2,0.4,0.6,0.8,1.0,1.3,1.6,2.0,2.3,2.6,3.0,3.5,4.0,4.5,5.0,6.0,7.0,8.0,10.0];
+var prelim = experiment(costs);
+
+console.log(prelim);
+
+viz.scatter(costs, prelim)
