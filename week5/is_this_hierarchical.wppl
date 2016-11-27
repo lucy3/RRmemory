@@ -86,13 +86,13 @@ var test_cost = function (cost) {
 
 var experiment = function (costs) {
   return map(function (c) {
-    return sum(repeat(40, function () {
+    return sum(repeat(100, function () {
       test_cost(c)
-    })) / 40
+    })) / 100
   }, costs)
 }
 
-var costs = [0.2,0.6,1.0,2.0,2.3,2.6,4.0,6.0,9.0,10.0];
+var costs = [0.2,0.4,0.6,0.8,1.0,1.3,1.6,2.0,2.3,2.6,3.0,3.5,4.0,4.5,5.0,6.0,7.0,8.0,9.0,10.0];
 var prelim = experiment(costs);
 
 console.log(prelim);
