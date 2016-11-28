@@ -1,0 +1,69 @@
+var logit = function (x) { return Math.log(x/(1-x)) };
+
+var cont_expectation = function (p, fn, n) {
+  return sum(repeat(n, function () {return fn(sample(p))})) / n;
+}
+
+var generate_bstr = function (len, p) {
+ return repeat(len, function() { return flip(p) } );
+};
+
+var _step_learn = function (prior, obs, cost) {
+  var sp = Infer({method:"rejection", samples:1000}, function () {
+    var s = sample(prior);
+    observe(Bernoulli({p:s}), obs);
+    return s
+  });
+  var n_samples = 100;
+  var sampler = repeat(n_samples, function () {return logit(sample(sp))});
+  var exp = sum(sampler) / n_samples;
+  var vnc = sum(map(function (x) {return (x-exp)*(x-exp)}, sampler)) / (n_samples - 1) + Math.pow(sample(Gaussian({mu: 0, sigma: 1/(cost+1)})),2);
+  return LogitNormal({mu:exp, sigma:Math.sqrt(vnc), a:0, b:1})
+}
+
+var constant_cost_learn = function (prior, dat, cost) {
+  if (dat.length == 0) return prior;
+  var post = _step_learn(prior, dat[0], cost);
+  return constant_cost_learn(post, dat.slice(1), cost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Experiment section
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// evaluation
+var eval_binomial = function(p, post, samples) {
+  var num_actual = sample(Binomial({p:p, n:samples}));
+  var pr = cont_expectation(post, function (x) {return x}, samples);
+  var num_pred = sample(Binomial({p:pr, n:samples}));
+  var e = ((num_pred - num_actual) / (samples));
+  return e * e;
+}
+
+var actual_p = 0.8;
+var pp = LogitNormal({mu:0, sigma:1.5, a:0, b:1});
+
+var test_cost = function (cost) {
+  var d = generate_bstr(20, actual_p);
+  var posf = constant_cost_learn(pp, d, cost);
+  var result = cost + 200 * eval_binomial(actual_p, posf, 5000);
+  console.log(".")
+  return result
+}
+
+var experiment = function (costs) {
+  return map(function (c) {
+    return sum(repeat(100, function () {
+      test_cost(c)
+    })) / 100
+  }, costs)
+}
+
+var costs = [0.2,0.4,0.6,0.8,1.0,1.3,1.6,2.0,2.3,2.6,3.0,3.5,4.0,4.5,5.0,6.0,7.0,8.0,9.0,10.0];
+var prelim = experiment(costs);
+
+console.log(prelim);
+
+viz.scatter(costs, prelim)
