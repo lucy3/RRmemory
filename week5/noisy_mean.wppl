@@ -16,10 +16,10 @@ var _step_learn = function (prior, obs, cost) {
   });
   var n_samples = 100;
   var sampler = repeat(n_samples, function () {return logit(sample(sp))});
-  var exp = sum(sampler) / n_samples + sample(Gaussian({mu: 0, sigma: 1/(cost+1)}));
-  //var exp = sum(sampler) / n_samples;
+  var exp = sum(sampler) / n_samples;
+  var noise_exp = exp + sample(Gaussian({mu: 0, sigma: 1/(cost+1)}));
   var vnc = sum(map(function (x) {return (x-exp)*(x-exp)}, sampler)) / (n_samples - 1);
-  return LogitNormal({mu:exp, sigma:Math.sqrt(vnc), a:0, b:1})
+  return LogitNormal({mu:noise_exp, sigma:Math.sqrt(vnc), a:0, b:1})
 }
 
 var constant_cost_learn = function (prior, dat, cost) {
