@@ -54,11 +54,7 @@ var constant_cost_learn = function (prior, dat, cost, kOfC) {
 // evaluation
 var eval_binomial = function(p, posterior, samples) {
   var num_actual = sample(Binomial({p:p, n:samples}));
-  var post = Infer({method:"rejection", samples:1000}, function () {
-    var s = sample(posterior)
-    return s
-  });
-  var pr = cont_expectation(post, function (x) {return x}, samples);
+  var pr = cont_expectation(posterior, function (x) {return x}, samples);
   var num_pred = sample(Binomial({p:pr, n:samples}));
   var e = ((num_pred - num_actual) / (samples));
   return e * e;
