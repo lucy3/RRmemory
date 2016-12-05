@@ -52,12 +52,8 @@ var constant_cost_learn = function (prior, dat, cost, kOfC) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // evaluation
-var eval_binomial = function(p, postCoinKind, samples) {
+var eval_binomial = function(p, post, samples) {
   var num_actual = sample(Binomial({p:p, n:samples}));
-  var post = Infer({method:"rejection", samples:1000}, function () {
-    var s = sample(p)
-    return s
-  });
   var pr = cont_expectation(post, function (x) {return x}, samples);
   var num_pred = sample(Binomial({p:pr, n:samples}));
   var e = ((num_pred - num_actual) / (samples));
@@ -77,7 +73,7 @@ var kindOfCoin = marginalize(priors, "coinKind")
 var test_cost = function (cost) {
   var d = generate_bstr(20, actual_p);
   var posf = constant_cost_learn(pp, d, cost, kindOfCoin);
-  var result = cost + 200*eval_binomial(actual_p, posf["coinKind"], 5000);
+  var result = cost + 200*eval_binomial(actual_p, posf["p"], 5000);
   console.log(".")
   return result
 }
