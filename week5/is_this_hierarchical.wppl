@@ -55,9 +55,7 @@ var constant_cost_learn = function (prior, dat, cost, kOfC) {
 var eval_binomial = function(p, postCoinKind, samples) {
   var num_actual = sample(Binomial({p:p, n:samples}));
   var post = Infer({method:"rejection", samples:1000}, function () {
-    var k = sample(postCoinKind)
-    var s = sample((k == "heavy") ? LogitNormal({mu:1, sigma:1.5, a:0, b:1}) 
-                   : LogitNormal({mu:-1, sigma:1.5, a:0, b:1}))
+    var s = sample(p)
     return s
   });
   var pr = cont_expectation(post, function (x) {return x}, samples);
