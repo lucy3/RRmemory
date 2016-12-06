@@ -16,8 +16,11 @@ var marginalize = function(dist, key){
 
 var _step_learn = function (prior, obs, cost, kOfC) {
   var sp = Infer({method:"rejection", samples:1000}, function () {
-    var s = sample(prior);
     var k = sample(kOfC) 
+    var s = sample(prior)
+    // TRY COMMENTING OUT THE ABOVE LINE AND UNCOMMENTING THE LINES BELOW
+//     var s = sample((k == "heavy") ? LogitNormal({mu:1, sigma:1.5, a:0, b:1}) 
+//                  : LogitNormal({mu:-1, sigma:1.5, a:0, b:1}))
     observe(Bernoulli({p:s}), obs);
     return { p : s, coinKind: k }
   });
