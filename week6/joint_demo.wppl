@@ -1,0 +1,10 @@
+var model = function(){
+  var coin = flip();
+  var coinWeight = coin ? 
+      sample(LogitNormal({mu:1, sigma:1.5, a:0, b:1}) ) : 
+  sample(LogitNormal({mu:-1, sigma:1.5, a:0, b:1}) )
+  var coinDist = Binomial({n:20, p:coinWeight})
+  observe(coinDist,16)
+  return {coin, coinWeight}
+}
+viz.table(Infer({method:"rejection", samples:100}, model))
