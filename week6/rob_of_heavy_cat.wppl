@@ -1,0 +1,85 @@
+var expectations = []
+
+var logit = function (x) { return Math.log(x/(1-x)) };
+
+var cont_expectation = function (p, fn, n) {
+  return sum(repeat(n, function () {return fn(sample(p))})) / n;
+}
+
+var generate_bstr = function (len, p) {
+  return repeat(len, function() { return flip(p) } );
+};
+
+var marginalize = function(dist, key){
+  return Infer({method: "enumerate"}, function(){
+    return sample(dist)[key]
+  })
+}
+
+var _step_learn = function (prior, obs, cost) {
+  return Infer({method:"rejection", samples:1000}, function () {
+    var k = sample(prior) 
+    var s = sample((k == 1) ? 
+                   LogitNormal({mu:1, sigma:1.5, a:0, b:1}) 
+                   : LogitNormal({mu:-1, sigma:1.5, a:0, b:1}))
+    observe(Bernoulli({p:s}), obs);
+    return k
+  });
+}
+
+var constant_cost_learn = function (prior, dat, cost) {
+  if (dat.length == 0) return prior;
+  var post = _step_learn(prior, dat[0], cost);
+  expectations.push(expectation(post))
+  return constant_cost_learn(post, dat.slice(1), cost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Experiment section
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// evaluation
+var eval_binomial = function(p, posterior, samples) {
+  var num_actual = sample(Binomial({p:p, n:samples}));
+  var get_sample = function () {
+    var k = sample(posterior)
+    var s = sample((k == 1) ? 
+                   LogitNormal({mu:1, sigma:1.5, a:0, b:1}) 
+                   : LogitNormal({mu:-1, sigma:1.5, a:0, b:1}))
+    return s
+  }
+  var pr = sum(repeat(samples, get_sample)) / samples;
+  var num_pred = sample(Binomial({p:pr, n:samples}));
+  var e = ((num_pred - num_actual) / (samples));
+  return e * e;
+}
+
+var actual_p = 0.8;
+var kindOfCoin = Infer({method:"rejection", samples:1000}, function () {
+  var k = uniformDraw([1, 0])
+  return k
+});
+
+var test_cost = function (cost) {
+  var d = generate_bstr(20, actual_p);
+  print(d)
+  var posf = constant_cost_learn(kindOfCoin, d, cost);
+  var result = cost + 200*eval_binomial(actual_p, posf, 5000);
+  console.log(".")
+  return result
+}
+
+var experiment = function (costs) {
+  return map(function (c) {
+    return sum(repeat(1, function () {
+      test_cost(c)
+    })) / 1
+  }, costs)
+}
+
+var costs = [0];
+var prelim = experiment(costs);
+
+viz.line(_.range(20), expectations)
