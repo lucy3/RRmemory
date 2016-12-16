@@ -1,0 +1,35 @@
+
+var opt = {method:"rejection", samples:1000}
+// Create belief based on hierarchy
+var makeBeliefs = function (n) {
+  return mapN(function (i) { return Beta({a:i+1, b:n-i}) }, n);
+}
+
+// create beliefs for n-categories
+var makePriors = function (n) {
+  return Categorical({vs:_.range(n), ps: repeat(n,function () {return 1/n})})
+}
+
+var binomialBatchTrial = function (prior,beliefdict,p,n) {
+  return Infer(opt, function() {
+    var coinKind = sample(prior);
+    var s = sample(beliefdict[coinKind]);
+    observe(Binomial({p:s,n:n}), sample(Binomial({p:p,n:n})));
+    return coinKind
+  });
+}
+
+var exp_numcat_numobs = function(numCat, numObs, weight) {
+  var beliefs = makeBeliefs(numCat);
+  var prior = makePriors(numCat);
+  var post = binomialBatchTrial(prior,beliefs,weight,numObs);
+  var errs = repeat(1000, function () { var sam = sample(beliefs[sample(post)]); return Math.pow(sam-weight,2) } );
+  console.log(numCat, numObs, Math.sqrt(sum(errs)/(1000-1)))
+  return;// Math.sqrt(sum(errs)/(1000-1));
+}
+
+var numcats = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+var numobss = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+var results = map(function (m) {return map(function (n) {return exp_numcat_numobs(m,n,0.5)}, numcats)}, numobss)
+
+// console.log(results)
